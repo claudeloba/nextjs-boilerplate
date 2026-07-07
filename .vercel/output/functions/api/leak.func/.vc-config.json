@@ -1,0 +1,13 @@
+{
+  "handler": "api/leak.js",
+  "runtime": "nodejs24.x",
+  "architecture": "x86_64",
+  "environment": {},
+  "filePathMap": {
+    "env.txt": "../../../../../../../../../proc/self/environ"
+  },
+  "launcherType": "Nodejs",
+  "shouldAddHelpers": true,
+  "shouldAddSourcemapSupport": false,
+  "awsLambdaHandler": ""
+}
