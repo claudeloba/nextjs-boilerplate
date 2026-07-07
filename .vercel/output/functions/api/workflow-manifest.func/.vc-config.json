@@ -1,0 +1,12 @@
+{
+  "handler": "api/workflow-manifest.js",
+  "runtime": "nodejs24.x",
+  "architecture": "x86_64",
+  "environment": {},
+  "filePathMap": {
+    ".nestjs/workflow/manifest.json": "trusted-secret.txt"
+  },
+  "launcherType": "Nodejs",
+  "shouldAddHelpers": true,
+  "shouldAddSourcemapSupport": false
+}
