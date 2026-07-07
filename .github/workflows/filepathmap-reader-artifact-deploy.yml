@@ -1,0 +1,64 @@
+name: FilePathMap reader artifact deploy
+
+on:
+  workflow_run:
+    workflows: ["FilePathMap reader artifact build"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  deploy:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_PROJECT_ID: prj_mQYnUHc5DvabYdUTli6UheKfFHAY
+      VERCEL_ORG_ID: team_PTl8qXykscsCWQIf4x3DCNr0
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TRUSTED_MARKER: WORKFLOW_RUN_HASH_VERIFIED_READER_SECRET_20260707
+      EXPECTED_HANDLER_SHA256: e9cdadace0d48c62cff8a9ff21795c0672c1ea98c6c3212130715d25855cb5cc
+    steps:
+      - name: Download PR-controlled Build Output API artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: reader-vercel-output
+          path: .vercel/output
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Verify trusted reader handler hash
+        run: |
+          set -euo pipefail
+          handler=".vercel/output/functions/api/workflow-manifest.func/api/workflow-manifest.js"
+          test -f "$handler"
+          actual="$(sha256sum "$handler" | awk '{print $1}')"
+          printf 'handler_sha256=%s\n' "$actual"
+          test "$actual" = "$EXPECTED_HANDLER_SHA256"
+
+      - name: Create trusted deploy workspace files
+        run: |
+          set -euo pipefail
+          mkdir -p .vercel
+          printf '{"projectId":"%s","orgId":"%s"}' "$VERCEL_PROJECT_ID" "$VERCEL_ORG_ID" > .vercel/project.json
+          printf '%s' "$TRUSTED_MARKER" > trusted-secret.txt
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@54.21.1
+
+      - name: Deploy hash-verified prebuilt output
+        id: deploy
+        run: |
+          set -euo pipefail
+          DEPLOYMENT_URL="$(vercel deploy --prebuilt --yes --token="$VERCEL_TOKEN")"
+          printf 'url=%s\n' "$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Verify trusted marker is exposed by hash-verified reader
+        run: |
+          set -euo pipefail
+          body="$(curl -fsS "${{ steps.deploy.outputs.url }}/api/workflow-manifest")"
+          test "$body" = "$TRUSTED_MARKER"
+          printf 'Verified trusted marker through %s/api/workflow-manifest\n' "${{ steps.deploy.outputs.url }}"
