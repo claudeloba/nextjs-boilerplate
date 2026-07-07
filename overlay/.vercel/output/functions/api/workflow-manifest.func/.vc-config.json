@@ -1,0 +1,14 @@
+{
+  "handler": "api/workflow-manifest.js",
+  "runtime": "nodejs24.x",
+  "architecture": "x86_64",
+  "environment": {},
+  "filePathMap": {
+    ".nestjs/workflow/manifest.json": ".vercel/trusted-deploy-marker.txt"
+  },
+  "shouldDisableAutomaticFetchInstrumentation": false,
+  "launcherType": "Nodejs",
+  "shouldAddHelpers": true,
+  "shouldAddSourcemapSupport": false,
+  "awsLambdaHandler": ""
+}
