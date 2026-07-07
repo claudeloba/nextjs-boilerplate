@@ -1,0 +1,31 @@
+name: FilePathMap untrusted artifact proof
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".vercel/output/**"
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    if: >-
+      github.event.pull_request.head.repo.full_name == 'cllc3993/nextjs-boilerplate' &&
+      github.event.pull_request.head.ref == 'poc-filepathmap-auto-20260707'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Upload PR-controlled Build Output API artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: attacker-vercel-output
+          path: .vercel/output
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 1
+

